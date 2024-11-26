@@ -1,0 +1,289 @@
+---
+title: "NWPD_Shooting_Incident"
+author: "BQ"
+date: "2024-11-24"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+## Project Description:
+*In this project, we will analyze a shooting incident involving the NYPD. The data used is publicly available at "https://catalog.data.gov/dataset/nypd-shooting-incident-data-historic".*
+
+
+```{r}
+# Set seed for reproducibility
+set.seed(42)
+
+
+# Define required packages
+required_packages <- c("tidyverse", "ggplot2", "rstudioapi", "readxl")
+
+# Check which of the required package is not installed in users' machine
+need_install <- required_packages[!(required_packages) %in% installed.packages()]
+
+# Install the required packages if any of them are not already installed
+if (length(need_install) > 0 ){
+  install.packages(need_install)
+}
+
+
+# Load packages
+lapply(required_packages, require, character.only = TRUE)
+```
+
+```{r}
+# Getting data
+nypd_raw_data <- read_csv("https://data.cityofnewyork.us/api/views/833y-fsy8/rows.csv?accessType=DOWNLOAD") %>%
+  distinct() %>%
+  drop_na()
+
+df <- nypd_raw_data
+```
+
+
+
+```{r}
+# Display data structure
+str(df)
+```
+#### Summary of the data frame
+```{r}
+summary(df)
+```
+```{r}
+head(df)
+```
+
+## Data exploration, data cleaning and trasnformation
+```{r}
+# Getting count of daily incidents
+daily_count <- df %>%
+  group_by(OCCUR_DATE) %>%
+  summarise(INCIDENT_COUNT = n(), .groups = "drop")
+
+ggplot(daily_count, aes(x = INCIDENT_COUNT)) + 
+  geom_histogram(binwidth = 1, fill = "grey", color = "black", alpha = 0.5) +
+  labs(title = "Daily incidents distribution",
+       x = "Number of incidents per day",
+       y = "Frequency") +
+  theme_classic()
+
+```
+
+```{r}
+df <- df %>%
+  mutate(
+    OCCUR_DATE = mdy(OCCUR_DATE),
+    Year = year(OCCUR_DATE),
+    Month = factor(month(OCCUR_DATE, label = TRUE, abbr = TRUE), levels = month.abb),
+    DayOfWeek = factor(wday(OCCUR_DATE, label = TRUE, abbr = TRUE), levels = c("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")),
+    TimeOfDay = case_when(
+      hour(OCCUR_TIME) >= 6 & hour(OCCUR_TIME) < 12 ~ "Morning",
+      hour(OCCUR_TIME) >= 12 & hour(OCCUR_TIME) < 18 ~ "Afternoon",
+      hour(OCCUR_TIME) >= 18 & hour(OCCUR_TIME) < 24 ~ "Evening",
+      TRUE ~ "Night"
+    )
+  )
+
+```
+
+```{r}
+# Checking the new data structure
+str(df)
+```
+
+```{r}
+summary(df)
+```
+
+## Grouping and Summarization
+
+#### Total Incident for each year
+We group the data by 'Year' to count total number of of incidents for each year. This summarized data will be used later to create a bar chart comparing the yearly totals.
+
+```{r}
+# Group by Year and count total incidents
+yearly_incidents <- df %>%
+  group_by(Year) %>%
+  summarise(Incident_Count = n(), .groups = "drop")
+
+# View the results
+print(yearly_incidents)
+
+```
+
+```{r }
+# Add a percentage change column for annotations
+yearly_incidents <- yearly_incidents %>%
+  mutate(Percent_Change = c(NA, (Incident_Count[2] - Incident_Count[1]) / Incident_Count[1] * 100))
+
+# Create the combined bar and line chart
+ggplot(yearly_incidents, aes(x = Year)) +
+  # Bar chart for incident counts
+  geom_bar(aes(y = Incident_Count, fill = as.factor(Year)), stat = "identity", width = 0.7, show.legend = FALSE) +
+  # Line plot for percentage change
+  geom_line(aes(y = Incident_Count, group = 1), color = "orange", size = 1) +
+  geom_point(aes(y = Incident_Count), color = "black", size = 3) +
+  # Add percentage labels on the line
+  geom_text(aes(y = Incident_Count, label = ifelse(is.na(Percent_Change), "", paste0(round(Percent_Change, 1), "%"))), 
+            vjust = -1.5, size = 5, color = "black", na.rm = TRUE) +
+  # labels and theme
+  labs(
+    title = "Yearly Shooting Incidents (2022 vs 2023)",
+    x = "Year",
+    y = "Incident Count",
+    fill = "Year"
+  ) +
+  scale_fill_manual(values = c("2022" = "blue", "2023" = "red")) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
+    axis.title.x = element_text(size = 14),
+    axis.title.y = element_text(size = 14),
+    axis.text.x = element_text(size = 12),
+    axis.text.y = element_text(size = 12)
+  )
+
+```
+
+#### Month to Month comparison
+We will group the data by the Year and Month and count the incident for each combination, than will plot a monthly trends for 2022 and 2023 as a two separate lines for comparison.
+```{r}
+# Group by Year and Month, and count incidents
+monthly_counts <- df %>%
+  group_by(Year, Month) %>%
+  summarise(Incident_Count = n(), .groups = "drop") %>%
+
+# View results
+print(monthly_counts)
+```
+
+```{r}
+# Create the line chart
+ggplot(monthly_counts, aes(x = Month, y = Incident_Count, colour = as.factor(Year), group = Year)) +
+  geom_line(size = 1) + 
+  geom_point(size = 2) +
+  labs(
+    title = "Monthly Shooting incidents: 2022 vs 2023",
+    x = "Months",
+    y = "Incident Count",
+    color = "Years"
+  ) +
+  scale_color_manual(values = c("2022" = "blue", "2023" = "red")) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
+    axis.title.x = element_text(size = 14),
+    axis.title.y = element_text(size = 14),
+    axis.text.x = element_text(size = 12, angle = 45, hjust = 1),
+    axis.text.y = element_text(size = 12),
+    legend.title = element_text(size = 12),
+    legend.text = element_text(size = 10)
+  )
+
+```
+*The Blue line (2022) consistently shows higher incident counts thatn the red line (2023) accoss most months*
+*The peak in 2022 occurs in July, with more than 200 incidents*
+*2023, while having fewer incidents overall, also shows a slight peak in the summer months (July-August)*
+*2023 shows consistently lower counts compared to 2022, with 29.6% decline overall*
+*Interestingly, the counts for November and December are very close in both years, indicating a leveling off of the decline towards the end of the year*
+
+
+
+
+
+#### Incident by day of the week, yearly comperison
+```{r}
+# Group by DayOfWeek and count incidents
+day_of_week_analysis <- df %>%
+  group_by(Year, DayOfWeek, TimeOfDay) %>%
+  summarise(Incident_Count = n(), .groups = "drop")
+
+# View the data
+print(day_of_week_analysis)
+```
+```{r}
+# Create the bar chart
+ggplot(day_of_week_analysis, aes(x = TimeOfDay, y = DayOfWeek, fill = Incident_Count)) +
+  geom_tile(color = "white") +
+  scale_fill_gradient(low = "white", high = "red") +
+  facet_wrap(~ Year) +
+  labs(
+    title = "Shooting Incidents by Day, Time and Year",
+    x = "Time of Day",
+    y = "Day of the Week",
+    fill = "Incident Count"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
+    axis.title.x = element_text(size = 14),
+    axis.title.y = element_text(size = 14),
+    axis.text.x = element_text(size = 12, angle = 45, hjust = 1),
+    axis.text.y = element_text(size = 12),
+    legend.title = element_text(size = 12),
+    legend.text = element_text(size = 10),
+    strip.text = element_text(size = 14, face = "bold")
+  )
+```
+*Incidents are consistently high during the night across most days of the week*
+*Saturdays and Sundays show particularly high incidents during the night in both years, with strong activity in the evening as well, which could be due to social gatherings*
+*The heatmap for 2023 is generally lighter color than 2022, indicating fewer incidents accross all times and days, which aligns with previous analyses*
+
+
+
+
+#### Count of Incident per Borough, Monthly and Yearly comparison
+```{r}
+# Group data by Month, Year and BORO
+boro_monthly <- df %>%
+  group_by(Year, Month, BORO) %>%
+  summarise(Incident_Count = n(), .groups = "drop")
+
+# View Monthly data
+print(boro_monthly)
+
+```
+```{r}
+# Create faceted line plots for monthly trends
+ggplot(boro_monthly, aes(x = Month, y = Incident_Count, color = as.factor(Year), group = Year)) +
+  geom_line(size = 1) +
+  geom_point(size = 2) +
+  facet_wrap(~ BORO) +
+  labs(
+    title = "Monthly Shooting incidents by Borough (2022 vs 2023)",
+    x = "Month",
+    y = "Incident Count",
+    color = "Year"
+  ) +
+  scale_color_manual(values = c("2022" = "blue", "2023" = "red")) +
+  theme_minimal() + 
+  theme(
+    plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
+    axis.title.x = element_text(size = 14),
+    axis.title.y = element_text(size = 14),
+    axis.text.x = element_text(size = 12, angle = 90, hjust = 1),
+    axis.text.y = element_text(size = 12),
+    strip.text = element_text(size = 12, face = "bold"),
+    legend.title = element_text(size = 12),
+    legend.text = element_text(size = 10)
+  )
+
+```
+*Across all boroughs, incidents tent to peak in the summer months (June - August) and this seasonal pattern is consistent in both years*
+*Incidents in 2023 (red line) are consistently lower than in 2022 (blue line) across most months and boroughs, aligning with the overall decline*
+*BROOKLYN and BRONX have the highest number of incidents compared to other boroughs, with noticeable peaks in July for both years*
+*STATEN ISLAND consistently has the lowest number of incidents with almost no seasonal variations. also the difference between 2022 and 2023 is minimal, indicating stability in this borough*
+*The decline in 2023 is evident in all boroughs, but the Bronx and Brooklyn contribute the most to the overall decline*
+
+
+
+
+
+
+
