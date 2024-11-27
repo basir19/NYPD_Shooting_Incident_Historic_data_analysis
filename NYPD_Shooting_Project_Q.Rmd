@@ -282,6 +282,106 @@ ggplot(boro_monthly, aes(x = Month, y = Incident_Count, color = as.factor(Year),
 *The decline in 2023 is evident in all boroughs, but the Bronx and Brooklyn contribute the most to the overall decline*
 
 
+## Machine Learning Model
+#### Linear Regression Model
+We will build a Linear Regression model to predict the number of shooting incidents (Incident_Count) for each borough (BORO) in a a specific month (Month) and year (Year).
+```{r}
+# Aggregate data by BORO, Month, Year
+data_model <- df %>%
+  group_by(BORO, Year, Month) %>%
+  summarise(Incident_Count = n(), .groups = "drop") %>%
+  mutate(BORO = as.factor(BORO))
+
+print(head(data_model))
+```
+
+#### Train-Test Split
+We will split the data into training(80%) and testing(20%) subsets to evaluate the model's performance
+```{r}
+# Import caret library for spliting the data
+install.packages("caret")
+```
+
+```{r}
+library(caret)
+```
+
+```{r}
+#Split data into training and testing sets
+set.seed(42) # for reproducibility
+train_index <- createDataPartition(data_model$Incident_Count, p=0.8, list = FALSE)
+train_data <- data_model[train_index,] # the 80% portion
+test_data <- data_model[-train_index,] # the remaining 20% portion
+
+# View the size of the train and test datasets
+cat("Training data:", nrow(train_data), "\nTesting data:", nrow(test_data))
+```
+
+#### Fit a Linear Regression Model
+We will train a simple Linear Regression model using lm() function with BORO, Month, and Year as predictor
+```{r}
+# Fit the linear regression model
+lm_model <- lm(Incident_Count ~ BORO + Month + Year, data = train_data)
+
+# View the model summary
+summary(lm_model)
+```
+
+#### Model Prediction
+We will use the trained modelt to predict Incident_Count on the test data
+```{r}
+# Predict on the test data
+predictions <- predict(lm_model, newdata = test_data)
+
+# Combine the predections with actual values
+result <- data.frame(
+  Actual = test_data$Incident_Count,
+  Predicted = predictions
+)
+
+print(head(result))
+
+```
+*Actual values are a bit higher than Predicted values in the 6 rows of data, we will quantify how close these predictions are to the actual values using MAE and MSE*
+
+```{r}
+# Calculate MAE and MSE
+mae <- mean(abs(result$Actual - result$Predicted))
+mse <- mean((result$Actual - result$Predicted)^2)
+
+# view the evaluation
+cat("MAE: ", mae, "\n")
+cat("MSE: ", mse, "\n")
+
+```
+*MAE value suggests the model performs reasonably well but has room for improvement*
+*MSE value highlights that there may still be occasional large errors in prediction*
+
+
+#### Result Visualization
+We will create a scatter plot to visualize the relationship between actual and predicted values
+
+```{r}
+# Scatter plot of actual vs. predicted values
+ggplot(result, aes(x = Actual, y = Predicted)) + 
+  geom_point(color = "blue") + 
+  geom_abline(slope = 1, intercept = 0, color = "red", linetype = "dashed") +
+  labs(
+    title = "Actual vs Predicted Shooting Incidents",
+    x = "Actual Incident Count",
+    y = "Predicted Incident Count"
+  )+
+  theme_minimal()
+```
+
+
+
+
+
+
+
+
+
 
 
 
