@@ -12,6 +12,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r}
+# Clean up the R environment
 rm(list = ls())
 ```
 
