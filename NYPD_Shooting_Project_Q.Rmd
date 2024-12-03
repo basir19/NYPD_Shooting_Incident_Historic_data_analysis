@@ -2,13 +2,18 @@
 title: "NWPD_Shooting_Incident"
 author: "BQ"
 date: "2024-11-24"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+```{r}
+rm(list = ls())
+```
 
 
 ## Project Description:
@@ -19,9 +24,8 @@ knitr::opts_chunk$set(echo = TRUE)
 # Set seed for reproducibility
 set.seed(42)
 
-
 # Define required packages
-required_packages <- c("tidyverse", "ggplot2", "rstudioapi", "readxl")
+required_packages <- c("tidyverse", "ggplot2", "rstudioapi", "readxl", "caret")
 
 # Check which of the required package is not installed in users' machine
 need_install <- required_packages[!(required_packages) %in% installed.packages()]
@@ -38,31 +42,30 @@ lapply(required_packages, require, character.only = TRUE)
 
 ```{r}
 # Getting data
-nypd_raw_data <- read_csv("https://data.cityofnewyork.us/api/views/833y-fsy8/rows.csv?accessType=DOWNLOAD") %>%
+raw_data <- read_csv("https://data.cityofnewyork.us/api/views/833y-fsy8/rows.csv?accessType=DOWNLOAD") %>%
   distinct() %>%
   drop_na()
 
-df <- nypd_raw_data
+data <- raw_data
 ```
-
-
 
 ```{r}
 # Display data structure
-str(df)
+str(data)
 ```
 #### Summary of the data frame
 ```{r}
-summary(df)
+summary(data)
 ```
+
 ```{r}
-head(df)
+head(data)
 ```
 
 ## Data exploration, data cleaning and trasnformation
 ```{r}
 # Getting count of daily incidents
-daily_count <- df %>%
+daily_count <- data %>%
   group_by(OCCUR_DATE) %>%
   summarise(INCIDENT_COUNT = n(), .groups = "drop")
 
@@ -76,7 +79,7 @@ ggplot(daily_count, aes(x = INCIDENT_COUNT)) +
 ```
 
 ```{r}
-df <- df %>%
+data <- data %>%
   mutate(
     OCCUR_DATE = mdy(OCCUR_DATE),
     Year = year(OCCUR_DATE),
@@ -94,11 +97,11 @@ df <- df %>%
 
 ```{r}
 # Checking the new data structure
-str(df)
+str(data)
 ```
 
 ```{r}
-summary(df)
+summary(data)
 ```
 
 ## Grouping and Summarization
@@ -108,7 +111,7 @@ We group the data by 'Year' to count total number of of incidents for each year.
 
 ```{r}
 # Group by Year and count total incidents
-yearly_incidents <- df %>%
+yearly_incidents <- data %>%
   group_by(Year) %>%
   summarise(Incident_Count = n(), .groups = "drop")
 
@@ -127,7 +130,7 @@ ggplot(yearly_incidents, aes(x = Year)) +
   # Bar chart for incident counts
   geom_bar(aes(y = Incident_Count, fill = as.factor(Year)), stat = "identity", width = 0.7, show.legend = FALSE) +
   # Line plot for percentage change
-  geom_line(aes(y = Incident_Count, group = 1), color = "orange", size = 1) +
+  geom_line(aes(y = Incident_Count, group = 1), color = "orange", linewidth = 1) +
   geom_point(aes(y = Incident_Count), color = "black", size = 3) +
   # Add percentage labels on the line
   geom_text(aes(y = Incident_Count, label = ifelse(is.na(Percent_Change), "", paste0(round(Percent_Change, 1), "%"))), 
@@ -148,25 +151,24 @@ ggplot(yearly_incidents, aes(x = Year)) +
     axis.text.x = element_text(size = 12),
     axis.text.y = element_text(size = 12)
   )
-
 ```
 
 #### Month to Month comparison
 We will group the data by the Year and Month and count the incident for each combination, than will plot a monthly trends for 2022 and 2023 as a two separate lines for comparison.
-```{r}
+```{r create-month-counts, cache=FALSE}
 # Group by Year and Month, and count incidents
-monthly_counts <- df %>%
+month_counts <- data %>%
   group_by(Year, Month) %>%
   summarise(Incident_Count = n(), .groups = "drop") %>%
 
 # View results
-print(monthly_counts)
+print(month_counts)
 ```
 
-```{r}
+```{r monthly-counts-chart}
 # Create the line chart
-ggplot(monthly_counts, aes(x = Month, y = Incident_Count, colour = as.factor(Year), group = Year)) +
-  geom_line(size = 1) + 
+ggplot(month_counts, aes(x = Month, y = Incident_Count, colour = as.factor(Year), group = Year)) +
+  geom_line(linewidth = 1) + 
   geom_point(size = 2) +
   labs(
     title = "Monthly Shooting incidents: 2022 vs 2023",
@@ -185,8 +187,8 @@ ggplot(monthly_counts, aes(x = Month, y = Incident_Count, colour = as.factor(Yea
     legend.title = element_text(size = 12),
     legend.text = element_text(size = 10)
   )
-
 ```
+
 *The Blue line (2022) consistently shows higher incident counts thatn the red line (2023) accoss most months*
 *The peak in 2022 occurs in July, with more than 200 incidents*
 *2023, while having fewer incidents overall, also shows a slight peak in the summer months (July-August)*
@@ -200,7 +202,7 @@ ggplot(monthly_counts, aes(x = Month, y = Incident_Count, colour = as.factor(Yea
 #### Incident by day of the week, yearly comperison
 ```{r}
 # Group by DayOfWeek and count incidents
-day_of_week_analysis <- df %>%
+day_of_week_analysis <- data %>%
   group_by(Year, DayOfWeek, TimeOfDay) %>%
   summarise(Incident_Count = n(), .groups = "drop")
 
@@ -241,7 +243,7 @@ ggplot(day_of_week_analysis, aes(x = TimeOfDay, y = DayOfWeek, fill = Incident_C
 #### Count of Incident per Borough, Monthly and Yearly comparison
 ```{r}
 # Group data by Month, Year and BORO
-boro_monthly <- df %>%
+boro_monthly <- data %>%
   group_by(Year, Month, BORO) %>%
   summarise(Incident_Count = n(), .groups = "drop")
 
@@ -249,10 +251,12 @@ boro_monthly <- df %>%
 print(boro_monthly)
 
 ```
+
+
 ```{r}
 # Create faceted line plots for monthly trends
 ggplot(boro_monthly, aes(x = Month, y = Incident_Count, color = as.factor(Year), group = Year)) +
-  geom_line(size = 1) +
+  geom_line(linewidth = 1) +
   geom_point(size = 2) +
   facet_wrap(~ BORO) +
   labs(
@@ -287,7 +291,7 @@ ggplot(boro_monthly, aes(x = Month, y = Incident_Count, color = as.factor(Year),
 We will build a Linear Regression model to predict the number of shooting incidents (Incident_Count) for each borough (BORO) in a a specific month (Month) and year (Year).
 ```{r}
 # Aggregate data by BORO, Month, Year
-data_model <- df %>%
+data_model <- data %>%
   group_by(BORO, Year, Month) %>%
   summarise(Incident_Count = n(), .groups = "drop") %>%
   mutate(BORO = as.factor(BORO))
@@ -297,14 +301,6 @@ print(head(data_model))
 
 #### Train-Test Split
 We will split the data into training(80%) and testing(20%) subsets to evaluate the model's performance
-```{r}
-# Import caret library for spliting the data
-install.packages("caret")
-```
-
-```{r}
-library(caret)
-```
 
 ```{r}
 #Split data into training and testing sets
@@ -373,17 +369,3 @@ ggplot(result, aes(x = Actual, y = Predicted)) +
   )+
   theme_minimal()
 ```
-
-
-
-
-
-
-
-
-
-
-
-
-
-
