@@ -390,6 +390,3 @@ ggplot(result, aes(x = Actual, y = Predicted)) +
 ## Dataset bias analysis:
 The analysis of shooting incidents by borough, year, month and demographic variables is limited by the quality, completeness, and accuracy of the reported data. Reporting bias may exist, as the dataset relies on law enforcement documentation, which can be influenced by systematic inequalities, under reporting, or miss classifications of demographics information.
 
-
-=======
->>>>>>> e3a576cbcb96d81d361be2d856b14ee5ce7497b6:NYPD_Shooting_Project_Q.Rmd
