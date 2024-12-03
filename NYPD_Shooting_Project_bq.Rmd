@@ -11,6 +11,9 @@ output:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+```{r}
+rm(list = ls())
+```
 
 
 ## Project Description:
@@ -154,7 +157,11 @@ ggplot(yearly_incidents, aes(x = Year)) +
 #### Month to Month comparison
 
 We will group the data by the Year and Month and count the incident for each combination, than will plot a monthly trends for 2022 and 2023 as a two separate lines for comparison.
+<<<<<<< HEAD:NYPD_Shooting_Project_bq.Rmd
 ```{r create-month-counts}
+=======
+```{r create-month-counts, cache=FALSE}
+>>>>>>> e3a576cbcb96d81d361be2d856b14ee5ce7497b6:NYPD_Shooting_Project_Q.Rmd
 # Group by Year and Month, and count incidents
 month_counts <- data %>%
   group_by(Year, Month) %>%
@@ -300,7 +307,11 @@ print(head(data_model))
 ```
 
 #### Train-Test Split
+<<<<<<< HEAD:NYPD_Shooting_Project_bq.Rmd
 We will split the data into training(80%) and testing(20%) subsets to evaluate the model's performance.
+=======
+We will split the data into training(80%) and testing(20%) subsets to evaluate the model's performance
+>>>>>>> e3a576cbcb96d81d361be2d856b14ee5ce7497b6:NYPD_Shooting_Project_Q.Rmd
 
 ```{r}
 #Split data into training and testing sets
@@ -370,6 +381,7 @@ ggplot(result, aes(x = Actual, y = Predicted)) +
   )+
   theme_minimal()
 ```
+<<<<<<< HEAD:NYPD_Shooting_Project_bq.Rmd
 *The red dashed line represents the ideal case where Actual = Predicted.*
 *The majority of points are close to the red line, especially for lower incident counts (e.g., below 20).*
 *For higher actual values, the model tends to under predict, which indicates that the linear regression model may not fully capture the complexity of the data.*
@@ -379,3 +391,5 @@ ggplot(result, aes(x = Actual, y = Predicted)) +
 The analysis of shooting incidents by borough, year, month and demographic variables is limited by the quality, completeness, and accuracy of the reported data. Reporting bias may exist, as the dataset relies on law enforcement documentation, which can be influenced by systematic inequalities, under reporting, or miss classifications of demographics information.
 
 
+=======
+>>>>>>> e3a576cbcb96d81d361be2d856b14ee5ce7497b6:NYPD_Shooting_Project_Q.Rmd
