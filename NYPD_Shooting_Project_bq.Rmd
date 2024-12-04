@@ -318,7 +318,6 @@ print(head(data_model))
 ```
 
 #### Train-Test Split
-<<<<<<< HEAD:NYPD_Shooting_Project_bq.Rmd
 We will split the data into training(80%) and testing(20%) subsets to evaluate the model's performance.
 
 ```{r}
